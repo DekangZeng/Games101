@@ -22,6 +22,12 @@ Eigen::Matrix4f get_view_matrix(Eigen::Vector3f eye_pos)
 Eigen::Matrix4f get_model_matrix(float rotation_angle)
 {
     Eigen::Matrix4f model = Eigen::Matrix4f::Identity();
+    float angle = rotation_angle/180*M_PI;
+    model<<
+    cos(rotation_angle), -sin(rotation_angle),0,0,
+    sin(rotation_angle),  cos(rotation_angle),0,0,
+                      0,                    0,1,0,
+                      0,                    0,0,1;
 
     // TODO: Implement this function
     // Create the model matrix for rotating the triangle around the Z axis.
@@ -36,12 +42,56 @@ Eigen::Matrix4f get_projection_matrix(float eye_fov, float aspect_ratio,
     // Students will implement this function
 
     Eigen::Matrix4f projection = Eigen::Matrix4f::Identity();
-
+    Eigen::Matrix4f scale = Eigen::Matrix4f::Identity();
+    float fov = eye_fov/180*M_PI;
+    float n = -zNear;
+    float f = zFar;
+    float t = tan(fov/2) * zNear;
+    float b = -t ;
+    float r = t*aspect_ratio;
+    float l = -r;
+    scale<<
+    2/(r-l),        0,              0,          0,
+      0,      2/(t-b),              0,          0,
+      0,        0, 2/(n-f),          0,
+      0,        0,              0,          1;
+    Eigen::Matrix4f Ortho = Eigen::Matrix4f::Identity();
+    Ortho<<
+    1,0,0,-(r+l)/2,
+    0,1,0,-(t+b)/2,
+    0,0,1,-(n+f)/2,
+    0,0,0,1;
+    Eigen::Matrix4f presp= Eigen::Matrix4f::Identity();
+    presp<<
+    n,0,0,0,
+    0, n,0,0,
+    0,0,n+f,-n*f,
+    0,0,1,0;
+    projection = scale * Ortho * presp;
     // TODO: Implement this function
     // Create the projection matrix for the given parameters.
     // Then return it.
 
     return projection;
+}
+Eigen::Matrix4f get_rotation(Vector3f axis, float angle)
+//TODO: Implement Roate angle Around any Axis
+{
+    float r_angle = angle/180*M_PI;
+    Eigen::Matrix3f I = Eigen::Matrix3f::Identity();
+    Eigen::Matrix3f K = Eigen::Matrix3f::Identity();
+    K << 
+           0,   -axis[2], axis[1],
+     axis[2],          0, axis[0],
+    -axis[1],   -axis[0],       0;
+    Eigen::Matrix3f R = I * cos(r_angle) + (1-cos(r_angle)) * axis * axis.transpose() + sin(r_angle) * K;
+    Eigen::Matrix4f rotation = Eigen::Matrix4f::Identity();
+    rotation<< R(0,0),R(0,1),R(0,2), 0,
+            R(1,0),R(1,1),R(1,2),0,
+            R(2,0),R(2,1),R(2,2),0,
+            0,0,0, 1;
+    return rotation;
+
 }
 
 int main(int argc, const char** argv)
@@ -66,16 +116,17 @@ int main(int argc, const char** argv)
 
     std::vector<Eigen::Vector3i> ind{{0, 1, 2}};
 
+    Eigen::Vector3f axis = {1,0,0};
     auto pos_id = r.load_positions(pos);
     auto ind_id = r.load_indices(ind);
-
+    
     int key = 0;
     int frame_count = 0;
 
     if (command_line) {
         r.clear(rst::Buffers::Color | rst::Buffers::Depth);
 
-        r.set_model(get_model_matrix(angle));
+        r.set_model(get_rotation(axis,angle));
         r.set_view(get_view_matrix(eye_pos));
         r.set_projection(get_projection_matrix(45, 1, 0.1, 50));
 
@@ -91,7 +142,7 @@ int main(int argc, const char** argv)
     while (key != 27) {
         r.clear(rst::Buffers::Color | rst::Buffers::Depth);
 
-        r.set_model(get_model_matrix(angle));
+        r.set_model(get_rotation(axis,angle));
         r.set_view(get_view_matrix(eye_pos));
         r.set_projection(get_projection_matrix(45, 1, 0.1, 50));
 
